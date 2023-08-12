@@ -150,6 +150,7 @@ class BatchTranslateDialog(QDialog):
         super().__init__(parent)
         
         self.source_files = []
+        self.output_folder = None
 
         self.setWindowTitle(self.tr("批量翻译"))
         parent.translate_func.append([self.setWindowTitle, self, "批量翻译"])
@@ -193,7 +194,7 @@ class BatchTranslateDialog(QDialog):
         cancel_button = QPushButton(self.tr("取消"), self)
         parent.translate_func.append([cancel_button.setText, self, "取消"])
         cancel_button.clicked.connect(self.close)
-        layout.addWidget(cancel_button, 2, 1)
+        layout.addWidget(cancel_button, 2, 1)        
 
     def select_output_folder(self):
         folder = QFileDialog.getExistingDirectory(self, self.tr("选择输出位置"))
@@ -223,8 +224,35 @@ class BatchTranslateDialog(QDialog):
             super().keyPressEvent(event)
 
     def start_translation(self):
-        # Perform batch translation logic here
-        pass
+        if not self.source_files:
+            return
+        if not self.output_folder:
+            QMessageBox.warning(self, self.tr("警告"), self.tr("请选择输出位置"))
+            return
+        parent = self.parent()
+        if parent.translator is None:
+            QMessageBox.warning(self, self.tr("警告"), self.tr("请选择模型"))
+            return
+        
+        self.target_list_widget.clear()
+        
+        def _batch_translate():
+            parent.translator._is_terminated = False
+            for file in self.source_files:
+                self.setWindowTitle(self.tr("正在翻译 {}").format(file))
+                output_file = f'{self.output_folder}/{os.path.basename(file)}'
+                while os.path.exists(output_file):
+                    output_file = f'{self.output_folder}/new_{os.path.basename(output_file)}'
+                parent.translator.translate_file(file, output_file, parent.beam_size, parent.device)
+                self.target_list_widget.addItem(output_file)
+                if parent.translator.is_terminated():
+                    break
+            self.setWindowTitle(self.tr("批量翻译"))
+
+        parent.batch_thread = QThread()
+        parent.batch_thread.run = _batch_translate
+        parent.batch_thread.start()
+
 
 class MainWindow(QMainWindow):
     def __init__(self, settings):
@@ -331,7 +359,7 @@ class MainWindow(QMainWindow):
         if self.settings.contains('device'):
             self.device = self.settings.value('device')
         if self.settings.contains('beam_size'):
-            self.beam_size = self.settings.value('beam_size')
+            self.beam_size = int(self.settings.value('beam_size'))
 
         init_font(QApplication, 'global')
         init_font(self.original_text_edit, 'original')
@@ -380,6 +408,7 @@ class MainWindow(QMainWindow):
                                      self.tr("当前版本的翻译姬中不含有{}，请更新至最新版本")
                                      .format(self.translator.config['cleaner']))
                 return
+            self.batch_translate_dialog.finished.connect(self.translator.terminate)
             self.max_text_length = self.translator.config['max_len']
             self.text_count_label.setText(f"{len(self.original_text_edit.toPlainText())}/{self.max_text_length}")
         except:
