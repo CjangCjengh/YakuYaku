@@ -273,8 +273,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.translate_func = []
         self.max_text_length = 0
-        self.beam_size = 3
-        self.device = "cpu"
+        self.beam_size = int(settings.value('beam_size')) if settings.contains('beam_size') else 3
+        self.device = settings.value('device') if settings.contains('device') else 'cpu'
         self.settings = settings
         self.translator = None
         self.init_ui()
@@ -369,11 +369,6 @@ class MainWindow(QMainWindow):
             if self.settings.contains(f'{label}_font'):
                 font.setFamily(self.settings.value(f'{label}_font'))
             widget.setFont(font)
-
-        if self.settings.contains('device'):
-            self.device = self.settings.value('device')
-        if self.settings.contains('beam_size'):
-            self.beam_size = int(self.settings.value('beam_size'))
 
         init_font(QApplication, 'global')
         init_font(self.original_text_edit, 'original')

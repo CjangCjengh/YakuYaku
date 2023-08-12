@@ -40,7 +40,7 @@ class Translator:
             text = self.cleaner(text)
         src_tokens = torch.LongTensor([[bos_idx] + self.encode(text) + [eos_idx]])
         src_mask = (src_tokens != pad_idx).unsqueeze(-2)
-        results, _ = beam_search(self.model.to(device), src_tokens, src_mask, self.config['max_len'],
+        results, _ = beam_search(self.model.to(device), src_tokens.to(device), src_mask.to(device), self.config['max_len'],
                                  pad_idx, bos_idx, eos_idx, beam_size, device, self.is_terminated)
         if results is None:
             return None
