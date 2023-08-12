@@ -2,7 +2,7 @@ import os
 import json
 import torch
 from PyQt6.QtWidgets import QApplication, QMainWindow, QStyleFactory, QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QLabel, QPushButton, QComboBox, QFormLayout, QDialog, QSpinBox, QFontComboBox, QGridLayout, QListWidget, QFileDialog, QLineEdit, QMessageBox
-from PyQt6.QtCore import QTranslator, Qt, QThread, pyqtSignal
+from PyQt6.QtCore import QTranslator, Qt, QThread, QMetaObject, QGenericArgument, Q_ARG, pyqtSlot
 from PyQt6.QtGui import QAction
 from utils import Translator
 
@@ -239,20 +239,34 @@ class BatchTranslateDialog(QDialog):
         def _batch_translate():
             parent.translator._is_terminated = False
             for file in self.source_files:
-                self.setWindowTitle(self.tr("正在翻译 {}").format(file))
+                QMetaObject.invokeMethod(self, "show_progress", Qt.ConnectionType.QueuedConnection,
+                                         Q_ARG(str, file))
                 output_file = f'{self.output_folder}/{os.path.basename(file)}'
                 while os.path.exists(output_file):
                     output_file = f'{self.output_folder}/new_{os.path.basename(output_file)}'
                 parent.translator.translate_file(file, output_file, parent.beam_size, parent.device)
-                self.target_list_widget.addItem(output_file)
                 if parent.translator.is_terminated():
                     break
-            self.setWindowTitle(self.tr("批量翻译"))
+                QMetaObject.invokeMethod(self, "add_translated_file", Qt.ConnectionType.QueuedConnection,
+                                         Q_ARG(str, output_file))
+            QMetaObject.invokeMethod(self, "show_title", Qt.ConnectionType.QueuedConnection,
+                                     Q_ARG(str, "批量翻译"))
 
         parent.batch_thread = QThread()
         parent.batch_thread.run = _batch_translate
         parent.batch_thread.start()
 
+    @pyqtSlot(str)
+    def show_title(self, title):
+        self.setWindowTitle(self.tr(title))
+
+    @pyqtSlot(str)
+    def show_progress(self, file):
+        self.setWindowTitle(self.tr("正在翻译 {}").format(file))
+    
+    @pyqtSlot(str)
+    def add_translated_file(self, file):
+        self.target_list_widget.addItem(file)
 
 class MainWindow(QMainWindow):
     def __init__(self, settings):
