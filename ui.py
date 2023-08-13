@@ -186,10 +186,10 @@ class BatchTranslateDialog(QDialog):
         self.target_list_widget = QListWidget(self)
         layout.addWidget(self.target_list_widget, 1, 1)
 
-        start_translation_button = QPushButton(self.tr("开始翻译"), self)
-        parent.translate_func.append([start_translation_button.setText, self, "开始翻译"])
-        start_translation_button.clicked.connect(self.start_translation)
-        layout.addWidget(start_translation_button, 2, 0)
+        self.start_translation_button = QPushButton(self.tr("开始翻译"), self)
+        parent.translate_func.append([self.start_translation_button.setText, self, "开始翻译"])
+        self.start_translation_button.clicked.connect(self.start_translation)
+        layout.addWidget(self.start_translation_button, 2, 0)
 
         cancel_button = QPushButton(self.tr("取消"), self)
         parent.translate_func.append([cancel_button.setText, self, "取消"])
@@ -235,6 +235,7 @@ class BatchTranslateDialog(QDialog):
             return
         
         self.target_list_widget.clear()
+        self.start_translation_button.setEnabled(False)
         
         def _batch_translate():
             parent.translator._is_terminated = False
@@ -249,7 +250,7 @@ class BatchTranslateDialog(QDialog):
                     break
                 QMetaObject.invokeMethod(self, "add_translated_file", Qt.ConnectionType.QueuedConnection,
                                          Q_ARG(str, output_file))
-            QMetaObject.invokeMethod(self, "show_title", Qt.ConnectionType.QueuedConnection,
+            QMetaObject.invokeMethod(self, "end_translation", Qt.ConnectionType.QueuedConnection,
                                      Q_ARG(str, "批量翻译"))
 
         parent.batch_thread = QThread()
@@ -257,8 +258,9 @@ class BatchTranslateDialog(QDialog):
         parent.batch_thread.start()
 
     @pyqtSlot(str)
-    def show_title(self, title):
+    def end_translation(self, title):
         self.setWindowTitle(self.tr(title))
+        self.start_translation_button.setEnabled(True)
 
     @pyqtSlot(str)
     def show_progress(self, file):
