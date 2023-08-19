@@ -420,7 +420,7 @@ class MainWindow(QMainWindow):
                                      .format(self.translator.config['cleaner']))
                 return
             self.batch_translate_dialog.finished.connect(self.translator.terminate)
-            self.max_text_length = self.translator.config['max_len']
+            self.max_text_length = self.translator.config['max_len'][0]
             self.text_count_label.setText(f"{len(self.original_text_edit.toPlainText())}/{self.max_text_length}")
         except:
             QMessageBox.critical(self, self.tr("错误"), self.tr("模型加载失败"))
