@@ -1,8 +1,48 @@
-# import torch
+"""
+该代码实现了一个命令行界面 (CLI)，用于执行文本翻译任务。
+
+参数(args)说明:
+    --model-name: 模型的名称，默认为 'value1'。
+    --model-dir: 存放模型的目录，默认为 './models'。
+    --input-text-name: 输入文本的文件名，默认为 'input.txt'。
+    --input-text-content: 输入文本的内容，默认为 'input_text'。
+    --input-text-dir: 输入文本的目录，默认为 './inputs'。
+    --output-text-name: 输出文本的文件名，默认为 'output.txt'。
+    --output-text-dir: 输出文本的目录，默认为 './outputs'。
+    --device: 用于翻译的设备 (例如, 'cpu', 'cuda')，默认为 'cpu'。
+    --beam-size: beam搜索的大小，默认为 4。
+
+函数解释:
+1. Text: 代表文本的类，有三个属性：文件名(name)、内容(content)和目录(dir)。
+2. Model: 代表模型的类，有两个属性：名称(name)和目录(dir)。
+3. cli_process: 主处理类，其中:
+    - 初始化 (__init__): 创建模型、输入文本和输出文本的实例，并初始化翻译器。
+    - get_model_path: 获取模型的完整路径。
+    - get_input_text_path: 获取输入文本的完整路径。
+    - get_output_text_path: 获取输出文本的完整路径。
+    - load_model: 加载翻译模型。
+    - run: 执行翻译并保存结果。
+
+4. main: 主函数，用于从命令行接收参数，初始化 cli_process 类并执行翻译。
+
+如何运行:
+你可以通过以下的方式执行代码:
+```bash
+python cli.py --model-name=LNTW_ja2zh --model-dir=./models --input-text-name="test.txt"
+--input-text-dir="./" --output-text-name="output_test.txt" --output-text-dir="./output" --device=cuda
+"""
+
+
 import argparse
 import os
 
 from utils import Translator
+
+
+
+
+
+
 class Text:
     def __init__(self, name, content, dir):
         self.name = name
