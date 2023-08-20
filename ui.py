@@ -236,12 +236,20 @@ class BatchTranslateDialog(QDialog):
         texts = []
 
         for item in book.items:
-            # 检查项是否是 XHTML
             if isinstance(item, epub.EpubHtml):
                 soup = BeautifulSoup(item.content, 'html.parser')
-                texts.append(soup.get_text())
+                for paragraph in soup.find_all(['h1','h2','h3','h4','p']):
+                    for img in paragraph.find_all('img'):
+                        if 'alt' in img.attrs:
+                            img.replace_with(img['alt'])
+                    if re.match(r'^\s*$',paragraph.text):
+                        continue
+                    line="".join(map(str,paragraph.contents))
+                    line=re.sub(r'<rt[^>]*?>.*?</rt>','',line)
+                    line=re.sub(r'<[^>]*>','',line).replace('\n ','').replace('\n','')
+                    texts.append(line+'\n')
 
-        return "\n\n".join(texts)
+        return "".join(texts)
 
     def clear_files(self):
         self.source_files.clear()
