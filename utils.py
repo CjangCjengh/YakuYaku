@@ -52,15 +52,13 @@ class Translator:
         return texts
 
     def translate_file(self, file, output, beam_size=3, device='cpu'):
-        #更改:加入异常检测
         def translate_and_write(text):
             text = self.translate(text, beam_size, device)
             if text is not None:
                 with open(output, 'a', encoding='utf-8') as f:
                     f.write(text[0] + '\n')
-
         try:
-            with open(file, 'r', encoding='utf-8') as f:  # 确保我们使用utf-8编码
+            with open(file, 'r', encoding='utf-8') as f:
                 text = f.readline()
                 while True:
                     if self.is_terminated():
