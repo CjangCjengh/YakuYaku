@@ -22,7 +22,7 @@ class cli_process:
     DEFAULT_PARAM_OUTPUT_TEXT = "output_text"
     DEFAULT_PARAM_OUTPUT_TEXT_NAME = "output.txt"
     DEFAULT_PARAM_OUTPUT_TEXT_DIR = "./outputs"
-    DEFAULT_PARAM_BEAM_SIZE = 4;
+    DEFAULT_PARAM_BEAM_SIZE = 4
     def __init__(self, model_name = None, model_dir=None, input_text_name=None, input_text_content=None, input_text_dir = None, output_text_name=None,
                  output_text_content=None, output_text_dir=None,device='cpu',beam_size=None):
         self.model = Model(model_name or self.DEFAULT_PARAM_MODEL_NAME,
@@ -37,91 +37,46 @@ class cli_process:
                                 output_text_dir or self.DEFAULT_PARAM_OUTPUT_TEXT_DIR)
         self.device = device
         self.beam_size = beam_size or self.DEFAULT_PARAM_BEAM_SIZE
+        self.translator = None;
 
-    # For input_text
-    def set_model_name(self, model_name):
-        self.model.name = model_name
+    def get_model_path(self):
+        return os.path.join(self.model.dir, self.model.name)
 
-    def get_model_name(self):
-        return self.model.name
+    def get_input_text_path(self):
+        file_path = os.path.join(self.input_text.dir, self.input_text.name)
+        return file_path
 
-    def set_model_dir(self, model_dir):
-        self.model.dir = model_dir
-
-    def get_model_dir(self):
-        return self.model.dir
-
-    def set_input_text_name(self, input_text_name):
-        self.input_text.name = input_text_name
-
-    def get_input_text_name(self):
-        return self.input_text.name
-
-    def set_input_text_content(self, input_text_content):
-        self.input_text.content = input_text_content
-
-    def get_input_text_content(self):
-        return self.input_text.content
-
-    def set_input_text_dir(self, input_text_dir):
-        self.input_text.dir = input_text_dir
-
-    def get_input_text_dir(self):
-        return self.input_text.dir
-
-    # For output_text
-    def set_output_text_name(self, output_text_name):
-        self.output_text.name = output_text_name
-
-    def get_output_text_name(self):
-        return self.output_text.name
-
-    def set_output_text_content(self, output_text_content):
-        self.output_text.content = output_text_content
-
-    def get_output_text_content(self):
-        return self.output_text.content
-
-    def set_output_text_dir(self, output_text_dir):
-        self.output_text.dir = output_text_dir
-
-    def get_output_text_dir(self):
-        return self.output_text.dir
-
-    def set_beam_size(self, beam_size):
-        self.beam_size = beam_size
-
-    def get_beam_size(self):
-        return self.beam_size
-
-    def set_device(self, device):
-        self.output_text.dir = device
-
-    def get_deivce(self):
-        return self.device
+    def get_output_text_path(self):
+        file_path = os.path.join(self.output_text.dir, self.output_text.name)
+        return file_path
 
     def load_model(self):
-        model_dir = self.get_model_dir()
+        model_dir = self.get_model_path()
         try:
             self.translator = Translator(model_dir, self.device)
             if self.translator.tokenizer is None:
-                print("")
-                return
+
+                print("Error loading model: None tokenizer")
+
+            return
             if self.translator.cleaner is None:
-                print("")
+                print("Error loading model: None cleaner")
                 return
 
             self.max_text_length = self.translator.config['max_len'][0]
 
-        except:
-           print("")
+
+        except Exception as e:
+            print(f"Error loading model: {e}")
 
     def run(self):
         if self.model is None or self.translator is None:
             return
 
         def _translate():
-            translated_texts = self.translator.translate(self.input_text.content, self.beam_size, self.device)
+            origin_text_dir = self.get_input_text_path()
+            output_text_dir = self.get_output_text_path()
+            translated_texts = self.translator.translate_file(file=origin_text_dir,output=output_text_dir, beam_size = self.beam_size, device=self.device)
             if translated_texts is None:
                 return
 
@@ -137,6 +92,9 @@ class cli_process:
             print(f"Translated text saved to: {output_path}")
 
         _translate()
+
+
+
 
 
 def main(args):
