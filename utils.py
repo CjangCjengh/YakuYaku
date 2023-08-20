@@ -59,7 +59,7 @@ class Translator:
                 with open(output, 'a', encoding='utf-8') as f:
                     f.write(text[0] + '\n')
 
-        with open(file, 'r') as f:
+        with open(file, 'r', encoding='utf-8') as f:
             text = f.readline()
             while True:
                 if self.is_terminated():
