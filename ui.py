@@ -312,6 +312,131 @@ class BatchTranslateDialog(QDialog):
     def add_translated_file(self, file):
         self.target_list_widget.addItem(file)
 
+class SimplificationTranslateDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        
+        self.source_files = []
+        self.output_folder = None
+
+        self.setWindowTitle(self.tr("繁简转换"))
+        parent.translate_func.append([self.setWindowTitle, self, "繁简转换"])
+
+        layout = QGridLayout()
+        self.setLayout(layout)
+
+        select_file_layout = QHBoxLayout()
+        select_file_button = QPushButton(self.tr("选择文件"), self)
+        parent.translate_func.append([select_file_button.setText, self, "选择文件"])
+        select_file_button.clicked.connect(self.select_files)
+        self.clear_files_button = QPushButton(self.tr("清空"), self)
+        parent.translate_func.append([self.clear_files_button.setText, self, "清空"])
+        self.clear_files_button.clicked.connect(self.clear_files)
+        select_file_layout.addWidget(select_file_button)
+        select_file_layout.addWidget(self.clear_files_button)
+        layout.addLayout(select_file_layout, 0, 0)
+
+        output_folder_layout = QHBoxLayout()
+        output_folder_button = QPushButton(self.tr("选择输出位置"), self)
+        parent.translate_func.append([output_folder_button.setText, self, "选择输出位置"])
+        output_folder_button.clicked.connect(self.select_output_folder)
+        self.output_folder_textbox = QLineEdit(self)
+        self.output_folder_textbox.setReadOnly(True)
+        output_folder_layout.addWidget(output_folder_button)
+        output_folder_layout.addWidget(self.output_folder_textbox)
+        layout.addLayout(output_folder_layout, 0, 1)
+
+        self.source_list_widget = QListWidget(self)
+        self.source_list_widget.keyPressEvent = self.delete_selected_file
+        layout.addWidget(self.source_list_widget, 1, 0)
+
+        self.target_list_widget = QListWidget(self)
+        layout.addWidget(self.target_list_widget, 1, 1)
+
+        self.start_translation_button = QPushButton(self.tr("开始翻译(请先安装zhconv库)"), self)
+        parent.translate_func.append([self.start_translation_button.setText, self, "开始翻译(请先安装zhconv库)"])
+        self.start_translation_button.clicked.connect(self.start_translation)
+        layout.addWidget(self.start_translation_button, 2, 0)
+
+        cancel_button = QPushButton(self.tr("取消"), self)
+        parent.translate_func.append([cancel_button.setText, self, "取消"])
+        cancel_button.clicked.connect(self.close)
+        layout.addWidget(cancel_button, 2, 1)        
+
+    def select_output_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, self.tr("选择输出位置"))
+        if folder:
+            self.output_folder = folder
+            self.output_folder_textbox.setText(folder)
+
+    def select_files(self):
+        files, _ = QFileDialog.getOpenFileNames(self, self.tr("选择文件"), filter=self.tr("文本文件 (*.txt)"))
+        if files:
+            files = [f for f in files if f not in self.source_files]
+            self.source_files.extend(files)
+            self.source_list_widget.addItems(files)
+
+    def clear_files(self):
+        self.source_files.clear()
+        self.source_list_widget.clear()
+
+    def delete_selected_file(self, event):
+        if event.key() in [Qt.Key.Key_Delete, Qt.Key.Key_Backspace]: 
+            selected_items = self.source_list_widget.selectedItems()
+            for item in selected_items:
+                row = self.source_list_widget.row(item)
+                self.source_list_widget.takeItem(row)
+                self.source_files.pop(row)
+        else:
+            super().keyPressEvent(event)
+
+    def start_translation(self):
+        if not self.source_files:
+            return
+        if not self.output_folder:
+            QMessageBox.warning(self, self.tr("警告"), self.tr("请选择输出位置"))
+            return
+        parent = self.parent()
+        if parent.translator is None:
+            QMessageBox.warning(self, self.tr("警告"), self.tr("请选择模型"))
+            return
+        
+        self.target_list_widget.clear()
+        self.start_translation_button.setEnabled(False)
+        
+        def _simple_translate():
+            parent.translator._is_terminated = False
+            for file in self.source_files:
+                QMetaObject.invokeMethod(self, "show_progress", Qt.ConnectionType.QueuedConnection,
+                                         Q_ARG(str, file))
+                output_file = f'{self.output_folder}/{os.path.basename(file)}'
+                while os.path.exists(output_file):
+                    output_file = f'{self.output_folder}/new_{os.path.basename(output_file)}'
+                parent.translator.simplify(file, output_file)
+                if parent.translator.is_terminated():
+                    break
+                QMetaObject.invokeMethod(self, "add_translated_file", Qt.ConnectionType.QueuedConnection,
+                                         Q_ARG(str, output_file))
+            QMetaObject.invokeMethod(self, "end_translation", Qt.ConnectionType.QueuedConnection,
+                                     Q_ARG(str, "繁简转换"))
+
+        parent.simple_thread = QThread()
+        parent.simple_thread.run = _simple_translate
+        parent.simple_thread.start()
+
+    @pyqtSlot(str)
+    def end_translation(self, title):
+        self.setWindowTitle(self.tr(title))
+        self.start_translation_button.setEnabled(True)
+
+    @pyqtSlot(str)
+    def show_progress(self, file):
+        self.setWindowTitle(self.tr("正在翻译 {}").format(file))
+    
+    @pyqtSlot(str)
+    def add_translated_file(self, file):
+        self.target_list_widget.addItem(file)
+
 class MainWindow(QMainWindow):
     def __init__(self, settings):
         super().__init__()
@@ -332,6 +457,7 @@ class MainWindow(QMainWindow):
         self.ui_settings_dialog = UISettingsDialog(self)
         self.translate_settings_dialog = TranslateSettingsDialog(self)
         self.batch_translate_dialog = BatchTranslateDialog(self)
+        self.simplification_translate_dialog = SimplificationTranslateDialog(self)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -356,6 +482,11 @@ class MainWindow(QMainWindow):
         self.translate_func.append([batch_translate_action.setText, self, "批量翻译"])
         batch_translate_action.triggered.connect(self.show_batch_translate_dialog)
         tool_bar.addAction(batch_translate_action)
+
+        simplification_translate_action = QAction(self.tr("繁简转换"), self)
+        self.translate_func.append([simplification_translate_action.setText, self, "繁简转换"])
+        simplification_translate_action.triggered.connect(self.show_simplification_translate_dialog)
+        tool_bar.addAction(simplification_translate_action)
 
         self.model_label = QLabel(self.tr("选择模型"))
         self.translate_func.append([self.model_label.setText, self, "选择模型"])
@@ -426,6 +557,10 @@ class MainWindow(QMainWindow):
 
     def show_batch_translate_dialog(self):
         self.batch_translate_dialog.exec()
+    
+    def show_simplification_translate_dialog(self):
+        self.simplification_translate_dialog.exec()
+
 
     def retranslate_ui(self):
         for func, context, text in self.translate_func:

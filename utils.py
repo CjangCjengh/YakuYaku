@@ -4,6 +4,7 @@ import tokenizer
 import cleaner
 from model import init_model
 from beam_decoder import beam_search
+import zhconv
 
 class Translator:
     def __init__(self, model_dir, device='cpu'):
@@ -75,4 +76,19 @@ class Translator:
                         text = line
         except UnicodeDecodeError:
             print(f"Error decoding file: {file}. It may contain characters that are not UTF-8 encoded.")
+    
+    def simplify(self, file, output):
+
+        def convert_traditional_to_simplified(input_file, output_file):
+
+            with open(input_file, 'r', encoding='utf-8') as f_in, \
+                open(output_file, 'w', encoding='utf-8') as f_out:
+                
+                for line in f_in:
+                    
+                    simplified_line = zhconv.convert(line, 'zh-cn')
+                    
+                    f_out.write(simplified_line)
+
+        convert_traditional_to_simplified(file, output)
 
