@@ -50,27 +50,29 @@ class Translator:
             result = result[:index_of_eos + 1]
             texts.append(self.decode(result))
         return texts
-    
-    def translate_file(self, file, output, beam_size=3, device='cpu'):
 
+    def translate_file(self, file, output, beam_size=3, device='cpu'):
         def translate_and_write(text):
             text = self.translate(text, beam_size, device)
             if text is not None:
                 with open(output, 'a', encoding='utf-8') as f:
                     f.write(text[0] + '\n')
-
-        with open(file, 'r', encoding='utf-8') as f:
-            text = f.readline()
-            while True:
-                if self.is_terminated():
-                    break
-                line = f.readline()
-                if not line:
-                    if text:
+        try:
+            with open(file, 'r', encoding='utf-8') as f:
+                text = f.readline()
+                while True:
+                    if self.is_terminated():
+                        break
+                    line = f.readline()
+                    if not line:
+                        if text:
+                            translate_and_write(text)
+                        break
+                    if len(text + line) <= self.config['max_len'][0]:
+                        text += line
+                    else:
                         translate_and_write(text)
-                    break
-                if len(text+line) <= self.config['max_len'][0]:
-                    text += line
-                else:
-                    translate_and_write(text)
-                    text = line
+                        text = line
+        except UnicodeDecodeError:
+            print(f"Error decoding file: {file}. It may contain characters that are not UTF-8 encoded.")
+

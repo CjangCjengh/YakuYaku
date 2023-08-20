@@ -6,6 +6,10 @@ from PyQt6.QtCore import QTranslator, Qt, QThread, QMetaObject, QGenericArgument
 from PyQt6.QtGui import QAction
 from utils import Translator
 
+
+from ebooklib import epub
+from bs4 import BeautifulSoup
+
 class UISettingsDialog(QDialog):
     def __init__(self, parent):
         super().__init__(parent)
@@ -202,12 +206,50 @@ class BatchTranslateDialog(QDialog):
             self.output_folder = folder
             self.output_folder_textbox.setText(folder)
 
+
     def select_files(self):
-        files, _ = QFileDialog.getOpenFileNames(self, self.tr("选择文件"), filter=self.tr("文本文件 (*.txt)"))
+        #更改:加入epub支持
+        # 更新文件过滤器以包括 .epub 文件
+        files, _ = QFileDialog.getOpenFileNames(self, self.tr("选择文件"),
+                                                filter=self.tr("文本文件 (*.txt);;EPUB 文件 (*.epub)"))
         if files:
-            files = [f for f in files if f not in self.source_files]
-            self.source_files.extend(files)
-            self.source_list_widget.addItems(files)
+            processed_files = []
+            for f in files:
+                # 如果是 epub 文件，则提取文本并保存到一个 .txt 文件
+                if f.endswith('.epub'):
+                    text_content = self.extract_text_from_epub(file_path=f)
+                    txt_filename = f"{os.path.splitext(f)[0]}.txt"
+                    with open(txt_filename, 'w', encoding='utf-8') as txt_file:
+                        txt_file.write(text_content)
+                    processed_files.append(txt_filename)
+                else:
+                    processed_files.append(f)
+
+            # 过滤掉已经存在的文件
+            new_files = [f for f in processed_files if f not in self.source_files]
+            self.source_files.extend(new_files)
+            self.source_list_widget.addItems(new_files)
+
+    @staticmethod
+    def extract_text_from_epub(file_path):
+        book = epub.read_epub(file_path)
+        texts = []
+
+        for item in book.items:
+            if isinstance(item, epub.EpubHtml):
+                soup = BeautifulSoup(item.content, 'html.parser')
+                for paragraph in soup.find_all(['h1','h2','h3','h4','p']):
+                    for img in paragraph.find_all('img'):
+                        if 'alt' in img.attrs:
+                            img.replace_with(img['alt'])
+                    if re.match(r'^\s*$',paragraph.text):
+                        continue
+                    line="".join(map(str,paragraph.contents))
+                    line=re.sub(r'<rt[^>]*?>.*?</rt>','',line)
+                    line=re.sub(r'<[^>]*>','',line).replace('\n ','').replace('\n','')
+                    texts.append(line+'\n')
+
+        return "".join(texts)
 
     def clear_files(self):
         self.source_files.clear()
