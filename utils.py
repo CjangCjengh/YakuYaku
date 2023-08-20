@@ -5,6 +5,8 @@ import cleaner
 from model import init_model
 from beam_decoder import beam_search
 
+
+
 class Translator:
     def __init__(self, model_dir, device='cpu'):
         self._is_terminated = False
@@ -75,4 +77,50 @@ class Translator:
                         text = line
         except UnicodeDecodeError:
             print(f"Error decoding file: {file}. It may contain characters that are not UTF-8 encoded.")
+
+
+import opencc
+
+
+class ChineseConverter:
+    def __init__(self):
+        self.s2t_converter = opencc.OpenCC('s2t')  # 简体到繁体
+        self.t2s_converter = opencc.OpenCC('t2s')  # 繁体到简体
+
+    def convert(self, content, conversion_type='s2t'):
+        """
+        Convert the Chinese characters in content from Simplified to Traditional or vice versa.
+
+        Args:
+        - content (str): The text to be converted.
+        - conversion_type (str): 's2t' for Simplified to Traditional, 't2s' for Traditional to Simplified.
+
+        Returns:
+        - str: Converted text.
+        """
+        if conversion_type == 's2t':
+            return self.s2t_converter.convert(content)
+        elif conversion_type == 't2s':
+            return self.t2s_converter.convert(content)
+        else:
+            raise ValueError("Invalid conversion_type. Must be either 's2t' or 't2s'.")
+
+    def convert_file(self, input_file_path, output_file_path, conversion_type='s2t'):
+        """
+        Convert the Chinese characters in a file from Simplified to Traditional or vice versa.
+
+        Args:
+        - input_file_path (str): Path to the input file.
+        - output_file_path (str): Path to the output file.
+        - conversion_type (str): 's2t' for Simplified to Traditional, 't2s' for Traditional to Simplified.
+        """
+        with open(input_file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+
+        converted_content = self.convert(content, conversion_type)
+
+        with open(output_file_path, 'w', encoding='utf-8') as file:
+            file.write(converted_content)
+
+
 
