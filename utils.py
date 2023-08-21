@@ -1,7 +1,9 @@
-import json
+import json, re
 import torch
 import tokenizer
 import cleaner
+import zipfile
+import glob, os, shutil
 from model import init_model
 from beam_decoder import beam_search
 
@@ -51,7 +53,7 @@ class Translator:
             texts.append(self.decode(result))
         return texts
 
-    def translate_file(self, file, output, beam_size=3, device='cpu'):
+    def translate_txt(self, file, output, beam_size=3, device='cpu'):
         def translate_and_write(text):
             text = self.translate(text, beam_size, device)
             if text is not None:
@@ -74,5 +76,76 @@ class Translator:
                         translate_and_write(text)
                         text = line
         except UnicodeDecodeError:
-            print(f"Error decoding file: {file}. It may contain characters that are not UTF-8 encoded.")
+            print(f"Error decoding file: {file}. Please ensure that the file is encoded in UTF-8.")
 
+    def translate_epub(self, file, output, beam_size=3, device='cpu'):
+        def translate_and_replace(text, file_text, matches, pre_end):
+            text = self.translate(text, beam_size, device)
+            new_file_text = ''
+            if text is not None:
+                text = text[0].split('\n')
+                if len(text) < len(matches):
+                    text += [''] * (len(matches) - len(text))
+                else:
+                    text = text[:len(matches)-1] + ['<br/>'.join(text[len(matches)-1:])]
+                for t, match in zip(text, matches):
+                    t = match.group(0).replace(match.group(2), t)
+                    new_file_text += file_text[pre_end:match.start()] + t
+                    pre_end = match.end()
+            return new_file_text
+        
+        def clean_text(text):
+            text=re.sub(r'<rt[^>]*?>.*?</rt>','',text)
+            text=re.sub(r'<[^>]*>|\n','',text)
+            return text
+
+        if os.path.exists('./temp'):
+            shutil.rmtree('./temp')
+        with zipfile.ZipFile(file, 'r') as f:
+            f.extractall('./temp')
+        files = glob.glob("./temp/**/*html", recursive=True)
+        for file in files:
+            try:
+                print(f'Translating {file}...')
+                with open(file, 'r', encoding='utf-8') as f:
+                    file_text = f.read()
+                    matches = re.finditer(r'<(h[1-6]|p).*?>(.+?)</\1>',file_text,flags=re.DOTALL)
+                    if not matches:
+                        continue
+                    new_file_text = ''
+                    group = []
+                    text = ''
+                    pre_end = 0
+                    for match in matches:
+                        if self.is_terminated():
+                            break
+                        if len(text + match.group(2)) <= self.config['max_len'][0]:
+                            new_text = clean_text(match.group(2))
+                            if new_text:
+                                group.append(match)
+                                text += '\n' + new_text
+                        else:
+                            new_file_text += translate_and_replace(text, file_text, group, pre_end)
+                            pre_end = group[-1].end()
+                            new_text = clean_text(match.group(2))
+                            if new_text:
+                                group = [match]
+                                text = clean_text(match.group(2))
+                            else:
+                                group = []
+                                text = ''
+                    if text:
+                        new_file_text += translate_and_replace(text, file_text, group, pre_end)
+                        new_file_text += file_text[group[-1].end():]
+                if new_file_text:
+                    with open(file, 'w', encoding='utf-8') as f:
+                        f.write(new_file_text)
+            except UnicodeDecodeError:
+                print(f"Error decoding file: {file}. Please ensure that the file is encoded in UTF-8.")
+        if not self.is_terminated():
+            with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as f:
+                for file_path in glob.glob(f'./temp/**', recursive=True):
+                    if not os.path.isdir(file_path):
+                        relative_path = os.path.relpath(file_path, './temp')
+                        f.write(file_path, relative_path)
+        shutil.rmtree('./temp')
