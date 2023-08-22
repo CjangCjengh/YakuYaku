@@ -117,6 +117,8 @@ class TranslateSettingsDialog(QDialog):
         self.device_combobox.addItem("CPU")
         if torch.cuda.is_available():
             self.device_combobox.addItem("CUDA")
+        if torch.backends.mps.is_available():
+            self.device_combobox.addItem("MPS")
         self.device_combobox.setCurrentIndex(0 if parent.device == "cpu" else 1)
         inference_device_label = QLabel(self.tr("推理设备"))
         parent.translate_func.append([inference_device_label.setText, self, "推理设备"])
