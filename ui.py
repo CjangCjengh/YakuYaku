@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QStyleFactory, QWidget, Q
 from PyQt6.QtCore import QTranslator, Qt, QThread, QMetaObject, QGenericArgument, Q_ARG, pyqtSlot
 from PyQt6.QtGui import QAction
 from utils import Translator
+import cleaner
 
 class UISettingsDialog(QDialog):
     def __init__(self, parent):
@@ -129,6 +130,18 @@ class TranslateSettingsDialog(QDialog):
         parent.translate_func.append([beam_size_label.setText, self, "Beam Size"])
         layout.addRow(beam_size_label, self.beam_size_spinbox)
 
+        self.input_cleaner_combo = QComboBox()
+        self.fill_cleaner_combo(self.input_cleaner_combo)
+        input_cleaner_label = QLabel(self.tr("输入转换"))
+        parent.translate_func.append([input_cleaner_label.setText, self, "输入转换"])
+        layout.addRow(input_cleaner_label, self.input_cleaner_combo)
+
+        self.output_cleaner_combo = QComboBox()
+        self.fill_cleaner_combo(self.output_cleaner_combo)
+        output_cleaner_label = QLabel(self.tr("输出转换"))
+        parent.translate_func.append([output_cleaner_label.setText, self, "输出转换"])
+        layout.addRow(output_cleaner_label, self.output_cleaner_combo)
+
         self.save_button = QPushButton(self.tr("保存"))
         parent.translate_func.append([self.save_button.setText, self, "保存"])
         self.save_button.clicked.connect(self.save_translate_settings)
@@ -143,7 +156,19 @@ class TranslateSettingsDialog(QDialog):
         settings.setValue('device', parent.device)
         parent.beam_size = self.beam_size_spinbox.value()
         settings.setValue('beam_size', parent.beam_size)
+        parent.input_cleaner = self.input_cleaner_combo.currentData()
+        parent.output_cleaner = self.output_cleaner_combo.currentData()
         self.accept()
+
+    @staticmethod
+    def fill_cleaner_combo(combo: QComboBox):
+        combo.addItem("", None)
+        combo.addItem("简 → 繁", "s2t")
+        combo.addItem("繁 → 简", "t2s")
+
+    def init_cleaners(self):
+        self.input_cleaner_combo.setCurrentIndex(-1)
+        self.output_cleaner_combo.setCurrentIndex(-1)
 
 class BatchTranslateDialog(QDialog):
     def __init__(self, parent):
@@ -248,9 +273,11 @@ class BatchTranslateDialog(QDialog):
                 while os.path.exists(output_file):
                     output_file = f'{self.output_folder}/new_{os.path.basename(output_file)}'
                 if file.endswith('.epub'):
-                    parent.translator.translate_epub(file, output_file, parent.beam_size, parent.device)
+                    parent.translator.translate_epub(file, output_file, parent.beam_size, parent.device,
+                                                     parent.input_cleaner, parent.output_cleaner)
                 else:
-                    parent.translator.translate_txt(file, output_file, parent.beam_size, parent.device)
+                    parent.translator.translate_txt(file, output_file, parent.beam_size, parent.device,
+                                                    parent.input_cleaner, parent.output_cleaner)
                 if parent.translator.is_terminated():
                     break
                 QMetaObject.invokeMethod(self, "add_translated_file", Qt.ConnectionType.QueuedConnection,
@@ -284,6 +311,8 @@ class MainWindow(QMainWindow):
         self.device = settings.value('device') if settings.contains('device') else 'cpu'
         self.settings = settings
         self.translator = None
+        self.input_cleaner = None
+        self.output_cleaner = None
         self.init_ui()
         self.init_settings()
 
@@ -419,12 +448,16 @@ class MainWindow(QMainWindow):
                                      self.tr("当前版本的翻译姬中不含有{}，请更新至最新版本")
                                      .format(self.translator.config['tokenizer']))
                 return
-            if self.translator.cleaner is None:
+            if None in self.translator.input_cleaners or None in self.translator.output_cleaners:
                 QMessageBox.critical(self, self.tr("错误"),
-                                     self.tr("当前版本的翻译姬中不含有{}，请更新至最新版本")
-                                     .format(self.translator.config['cleaner']))
+                                     self.tr("当前版本的翻译姬中不含有所需的cleaner，请更新至最新版本"))
                 return
             self.batch_translate_dialog.finished.connect(self.translator.terminate)
+
+            self.input_cleaner = None
+            self.output_cleaner = None
+            self.translate_settings_dialog.init_cleaners()
+
             self.max_text_length = self.translator.config['max_len'][0]
             self.text_count_label.setText(f"{len(self.original_text_edit.toPlainText())}/{self.max_text_length}")
         except:
@@ -451,7 +484,8 @@ class MainWindow(QMainWindow):
 
         def _translate():
             self.translator._is_terminated = False
-            translated_text = self.translator.translate(original_text, self.beam_size, self.device)
+            translated_text = self.translator.translate(original_text, self.beam_size, self.device,
+                                                        self.input_cleaner, self.output_cleaner)
             if translated_text is None:
                 return
             self.translated_index_combo.clear()
