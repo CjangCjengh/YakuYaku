@@ -1,0 +1,3 @@
+torch
+pyqt6
+opencc
