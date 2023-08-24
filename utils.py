@@ -120,6 +120,8 @@ class Translator:
             f.extractall('./temp')
         files = glob.glob("./temp/**/*html", recursive=True)
         for file in files:
+            if not os.path.isfile(file):
+                continue
             try:
                 print(f'Translating {file}...')
                 with open(file, 'r', encoding='utf-8') as f:
