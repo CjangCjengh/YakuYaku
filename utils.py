@@ -22,7 +22,6 @@ class Translator:
                                 self.config['n_layers'], self.config['d_model'],
                                 self.config['d_ff'], self.config['n_heads']).to(device)
         self.model.load_state_dict(torch.load(f'{model_dir}/model.pth', map_location=device))
-        self.model.to(device)
         self.model.eval()
         self.tokenizer = getattr(tokenizer, self.config['tokenizer'], None)
         
@@ -61,7 +60,7 @@ class Translator:
                                             batch_first=True, padding_value=pad_idx).to(device)
         src_mask = (src_tokens != pad_idx).unsqueeze(-2).to(device)
        
-        results, _ = beam_search(self.model, src_tokens, src_mask, self.config['max_len'][1],
+        results, _ = beam_search(self.model.to(device), src_tokens, src_mask, self.config['max_len'][1],
                                  pad_idx, bos_idx, eos_idx, beam_size, device, self.is_terminated)
         if results is None:
             return None
