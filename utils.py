@@ -77,6 +77,8 @@ class Translator:
                     text = getattr(cleaner, output_cleaner)(text)
                 texts.append(text)
             texts_last.append(texts)
+        if len(texts_last) == 1:
+            return texts_last[0]
         return texts_last
 
     def translate_txt(self, file, output, beam_size=3, device='cpu', input_cleaner=None, output_cleaner=None):
