@@ -43,12 +43,13 @@ class Translator:
         self._is_terminated = True
 
     def translate(self, text, beam_size=3, device='cpu', input_cleaner=None, output_cleaner=None):
+        return self.translate_batch([text], beam_size, device, input_cleaner, output_cleaner)[0]
+
+    def translate_batch(self, text, beam_size=3, device='cpu', input_cleaner=None, output_cleaner=None):
         bos_idx = self.config['bos_idx']
         eos_idx = self.config['eos_idx']
         pad_idx = self.config['pad_idx']
-        
-        if isinstance(text, str):
-            text = [text]
+
         if self.input_cleaners is not None:
             for c in self.input_cleaners:
                 text = [c(text_single) for text_single in text]
@@ -77,8 +78,6 @@ class Translator:
                     text = getattr(cleaner, output_cleaner)(text)
                 texts.append(text)
             texts_last.append(texts)
-        if len(texts_last) == 1:
-            return texts_last[0]
         return texts_last
 
     def translate_txt(self, file, output, beam_size=3, device='cpu', input_cleaner=None, output_cleaner=None):
