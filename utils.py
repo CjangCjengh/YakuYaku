@@ -43,7 +43,10 @@ class Translator:
         self._is_terminated = True
 
     def translate(self, text, beam_size=3, device='cpu', input_cleaner=None, output_cleaner=None):
-        return self.translate_batch([text], beam_size, device, input_cleaner, output_cleaner)[0]
+        text = self.translate_batch([text], beam_size, device, input_cleaner, output_cleaner)
+        if text:
+            return text[0]
+        return None
 
     def translate_batch(self, text, beam_size=3, device='cpu', input_cleaner=None, output_cleaner=None):
         bos_idx = self.config['bos_idx']
