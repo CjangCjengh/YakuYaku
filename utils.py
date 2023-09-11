@@ -58,7 +58,7 @@ class Translator:
                 text = [c(text_single) for text_single in text]
 
         if input_cleaner:
-            text = getattr(cleaner, input_cleaner)(text)
+            text = [getattr(cleaner, input_cleaner)(text_single) for text_single in text]
         
         src_tokens = rnn_utils.pad_sequence((torch.LongTensor([bos_idx] + self.encode(t) + [eos_idx]) for t in text),
                                             batch_first=True, padding_value=pad_idx).to(device)
