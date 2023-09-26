@@ -124,6 +124,14 @@ class TranslateSettingsDialog(QDialog):
         parent.translate_func.append([inference_device_label.setText, self, "推理设备"])
         layout.addRow(inference_device_label, self.device_combobox)
 
+        self.batch_size_spinbox = QSpinBox()
+        self.batch_size_spinbox.setMinimum(1)
+        self.batch_size_spinbox.setMaximum(100)
+        self.batch_size_spinbox.setValue(parent.batch_size)
+        batch_size_label = QLabel(self.tr("Batch Size"))
+        parent.translate_func.append([batch_size_label.setText, self, "Batch Size"])
+        layout.addRow(batch_size_label, self.batch_size_spinbox)
+
         self.beam_size_spinbox = QSpinBox()
         self.beam_size_spinbox.setMinimum(1)
         self.beam_size_spinbox.setMaximum(10)
@@ -156,6 +164,8 @@ class TranslateSettingsDialog(QDialog):
         settings = parent.settings
         parent.device = self.device_combobox.currentText().lower()
         settings.setValue('device', parent.device)
+        parent.batch_size = self.batch_size_spinbox.value()
+        settings.setValue('batch_size', parent.batch_size)
         parent.beam_size = self.beam_size_spinbox.value()
         settings.setValue('beam_size', parent.beam_size)
         parent.input_cleaner = self.input_cleaner_combo.currentData()
@@ -276,10 +286,10 @@ class BatchTranslateDialog(QDialog):
                     output_file = f'{self.output_folder}/new_{os.path.basename(output_file)}'
                 if file.endswith('.epub'):
                     parent.translator.translate_epub(file, output_file, parent.beam_size, parent.device,
-                                                     parent.input_cleaner, parent.output_cleaner)
+                                                     parent.input_cleaner, parent.output_cleaner, parent.batch_size)
                 else:
                     parent.translator.translate_txt(file, output_file, parent.beam_size, parent.device,
-                                                    parent.input_cleaner, parent.output_cleaner)
+                                                    parent.input_cleaner, parent.output_cleaner, parent.batch_size)
                 if parent.translator.is_terminated():
                     break
                 QMetaObject.invokeMethod(self, "add_translated_file", Qt.ConnectionType.QueuedConnection,
@@ -309,6 +319,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.translate_func = []
         self.max_text_length = 0
+        self.batch_size = int(settings.value('batch_size')) if settings.contains('batch_size') else 1
         self.beam_size = int(settings.value('beam_size')) if settings.contains('beam_size') else 3
         self.device = settings.value('device') if settings.contains('device') else 'cpu'
         self.settings = settings

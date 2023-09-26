@@ -83,45 +83,54 @@ class Translator:
             texts_last.append(texts)
         return texts_last
 
-    def translate_txt(self, file, output, beam_size=3, device='cpu', input_cleaner=None, output_cleaner=None):
+    def translate_txt(self, file, output, beam_size=3, device='cpu', input_cleaner=None, output_cleaner=None, batch_size=1):
         def translate_and_write(text):
-            text = self.translate(text, beam_size, device, input_cleaner, output_cleaner)
-            if text is not None:
+            results = self.translate_batch(text, beam_size, device, input_cleaner, output_cleaner)
+            if results is not None:
                 with open(output, 'a', encoding='utf-8') as f:
-                    f.write(text[0] + '\n')
+                    for text in results:
+                        f.write(text[0] + '\n')
         try:
             with open(file, 'r', encoding='utf-8') as f:
+                text_batch = []
                 text = f.readline()
-                while True:
-                    if self.is_terminated():
-                        break
+                while not self.is_terminated():
+                    if len(text_batch) == batch_size:
+                        translate_and_write(text_batch)
+                        text_batch = []
                     line = f.readline()
                     if not line:
                         if text:
-                            translate_and_write(text)
+                            text_batch.append(text)
+                        if text_batch:
+                            translate_and_write(text_batch)
                         break
                     if len(text + line) <= self.config['max_len'][0]:
                         text += line
                     else:
-                        translate_and_write(text)
+                        text_batch.append(text)
                         text = line
         except UnicodeDecodeError:
             print(f"Error decoding file: {file}. Please ensure that the file is encoded in UTF-8.")
 
-    def translate_epub(self, file, output, beam_size=3, device='cpu', input_cleaner=None, output_cleaner=None):
-        def translate_and_replace(text, file_text, matches, pre_end):
-            text = self.translate(text, beam_size, device, input_cleaner, output_cleaner)
+    def translate_epub(self, file, output, beam_size=3, device='cpu', input_cleaner=None, output_cleaner=None, batch_size=1):
+        def translate_and_replace(text_batch, file_text):
+            texts = [text for text, _, _ in text_batch]
+            texts = self.translate_batch(texts, beam_size, device, input_cleaner, output_cleaner)
+            if texts is None:
+                return ''
             new_file_text = ''
-            if text is not None:
-                text = text[0].split('\n')
-                if len(text) < len(matches):
-                    text += [''] * (len(matches) - len(text))
-                else:
-                    text = text[:len(matches)-1] + ['<br/>'.join(text[len(matches)-1:])]
-                for t, match in zip(text, matches):
-                    t = match.group(0).replace(match.group(2), t)
-                    new_file_text += file_text[pre_end:match.start()] + t
-                    pre_end = match.end()
+            for text, (_, matches, pre_end) in zip(texts, text_batch):
+                if text is not None:
+                    text = text[0].split('\n')
+                    if len(text) < len(matches):
+                        text += [''] * (len(matches) - len(text))
+                    else:
+                        text = text[:len(matches)-1] + ['<br/>'.join(text[len(matches)-1:])]
+                    for t, match in zip(text, matches):
+                        t = match.group(0).replace(match.group(2), t)
+                        new_file_text += file_text[pre_end:match.start()] + t
+                        pre_end = match.end()
             return new_file_text
         
         def clean_text(text):
@@ -145,19 +154,23 @@ class Translator:
                     if not matches:
                         continue
                     new_file_text = ''
+                    text_batch = []
                     group = []
                     text = ''
                     pre_end = 0
                     for match in matches:
                         if self.is_terminated():
                             break
+                        if len(text_batch) == batch_size:
+                            new_file_text += translate_and_replace(text_batch, file_text)
+                            text_batch = []
                         if len(text + match.group(2)) <= self.config['max_len'][0]:
                             new_text = clean_text(match.group(2))
                             if new_text:
                                 group.append(match)
                                 text += '\n' + new_text
                         else:
-                            new_file_text += translate_and_replace(text, file_text, group, pre_end)
+                            text_batch.append((text, group, pre_end))
                             pre_end = group[-1].end()
                             new_text = clean_text(match.group(2))
                             if new_text:
@@ -167,7 +180,9 @@ class Translator:
                                 group = []
                                 text = ''
                     if text:
-                        new_file_text += translate_and_replace(text, file_text, group, pre_end)
+                        text_batch.append((text, group, pre_end))
+                    if text_batch:
+                        new_file_text += translate_and_replace(text_batch, file_text)
                         new_file_text += file_text[group[-1].end():]
                 if new_file_text:
                     with open(file, 'w', encoding='utf-8') as f:
