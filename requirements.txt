@@ -1,3 +1,4 @@
 torch
 pyqt6
 opencc
+tqdm
