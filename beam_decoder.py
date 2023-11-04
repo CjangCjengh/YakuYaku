@@ -1,4 +1,5 @@
 import torch
+import tqdm
 
 
 class Beam:
@@ -214,7 +215,7 @@ def beam_search(model, src, src_mask, max_len, pad, bos, eos, beam_size, device,
         inst_idx_to_position_map = get_inst_idx_to_tensor_position_map(active_inst_idx_list)
 
         # -- Decode
-        for len_dec_seq in range(1, max_len + 1):
+        for len_dec_seq in tqdm.tqdm(range(1, max_len + 1)):
 
             if is_terminated is not None and is_terminated():
                 return None, None
