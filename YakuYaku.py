@@ -4,10 +4,10 @@ from PyQt6.QtCore import QTranslator, QSettings
 from PyQt6.QtGui import QIcon, QGuiApplication
 from ui import MainWindow
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app = QApplication(sys.argv)
-    QApplication.setWindowIcon(QIcon("yakuyaku.ico"))
-    settings = QSettings("settings.ini", QSettings.Format.IniFormat)
+    QApplication.setWindowIcon(QIcon('yakuyaku.ico'))
+    settings = QSettings('settings.ini', QSettings.Format.IniFormat)
     if settings.contains('language'):
         translator = QTranslator()
         translator.load(settings.value('language'))
