@@ -3,3 +3,5 @@ __pycache__/*
 models/*
 settings.ini
 resources
+build
+dist
