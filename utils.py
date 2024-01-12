@@ -8,7 +8,7 @@ from model import init_model
 from beam_decoder import beam_search
 import torch.nn.utils.rnn as rnn_utils
 import requests
-
+from openai import OpenAI
 
 def translate_txt(file, output, max_len, batch_size, translate_batch, is_terminated):
     def translate_and_write(text):
@@ -60,7 +60,7 @@ def translate_epub(file, output, max_len, batch_size, translate_batch, is_termin
                         new_file_text += file_text[pre_end:match.start()] + t
                         pre_end = match.end()
             return new_file_text
-        
+
     def clean_text(text):
         text=re.sub(r'<rt[^>]*?>.*?</rt>','',text)
         text=re.sub(r'<[^>]*>|\n','',text)
@@ -142,7 +142,7 @@ class Translator:
         self.model.load_state_dict(torch.load(f'{model_dir}/model.pth', map_location=device))
         self.model.eval()
         self.tokenizer = getattr(tokenizer, self.config['tokenizer'], None)
-        
+
         ic_names = self.config.get('input_cleaners', None)
         if ic_names is None:
             ic_names = [self.config['cleaner']]
@@ -156,7 +156,7 @@ class Translator:
 
     def is_terminated(self):
         return self._is_terminated
-    
+
     def terminate(self):
         self._is_terminated = True
 
@@ -177,11 +177,11 @@ class Translator:
 
         if input_cleaner:
             text = [getattr(cleaner, input_cleaner)(text_single) for text_single in text]
-        
+
         src_tokens = rnn_utils.pad_sequence((torch.LongTensor([bos_idx] + self.encode(t) + [eos_idx]) for t in text),
                                             batch_first=True, padding_value=pad_idx).to(device)
         src_mask = (src_tokens != pad_idx).unsqueeze(-2).to(device)
-       
+
         results, _ = beam_search(self.model.to(device), src_tokens, src_mask, self.config['max_len'][1],
                                  pad_idx, bos_idx, eos_idx, beam_size, device, self.is_terminated)
         if results is None:
@@ -216,32 +216,42 @@ class SakuraTranslator:
     def __init__(self, url):
         self._is_terminated = False
         self.url = url
+        self.init_client()
+
+    def init_client(self):
+        self.client = OpenAI(api_key="114514", base_url=self.url)
         self.translate('こんにちは')
 
     def translate(self, text, input_cleaner=None, output_cleaner=None, **kwargs):
         if input_cleaner:
             text = getattr(cleaner, input_cleaner)(text)
-        data = {
-            'prompt': f'<reserved_106>将下面的日文文本翻译成中文：{text}<reserved_107>',
-            'max_new_tokens': 1024,
-            'do_sample': True,
-            'temperature': 0.1,
-            'top_p': 0.3,
-            'repetition_penalty': 1.0,
-            'num_beams': 1,
-            'frequency_penalty': 0.05,
-            'top_k': 40,
-            'seed': -1
-        }
-        resp = requests.post(f'{self.url}/api/v1/generate', json=data).json()
-        text = resp['results'][0]['text']
+        output = self.client.chat.completions.create(
+            model="sukinishiro",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "你是一个轻小说翻译模型，可以流畅通顺地以日本轻小说的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，不擅自添加原文中没有的代词。"
+                },
+                {
+                    "role": "user",
+                    "content": f"{text}"
+                }
+            ],
+            temperature=0.1,
+            top_p=0.3,
+            max_tokens=1024,
+            frequency_penalty=0.05,
+            seed=-1,
+            stream=False,
+        )
+        text = output.choices[0].message.content
         if output_cleaner:
             text = getattr(cleaner, output_cleaner)(text)
         return [text]
-    
+
     def is_terminated(self):
         return self._is_terminated
-    
+
     def terminate(self):
         self._is_terminated = True
 
@@ -249,7 +259,7 @@ class SakuraTranslator:
         def translate_batch(text):
             return [self.translate(text[0], input_cleaner, output_cleaner)]
         translate_txt(file, output, 768, 1, translate_batch, self.is_terminated)
-    
+
     def translate_epub(self, file, output, input_cleaner=None, output_cleaner=None, **kwargs):
         def translate_batch(text):
             return [self.translate(text[0], input_cleaner, output_cleaner)]
