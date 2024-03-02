@@ -486,10 +486,15 @@ class MainWindow(QMainWindow):
             data = self.model_combo.currentData()
             if os.path.exists(f'models/{data}'):
                 self.translator = Translator(f'models/{data}', self.device)
-                if self.translator.tokenizer is None:
+                if self.translator.src_tokenizer is None:
                     QMessageBox.critical(self, self.tr('错误'),
                                         self.tr('当前版本的翻译姬中不含有{}，请更新至最新版本')
-                                        .format(self.translator.config['tokenizer']))
+                                        .format(self.translator.config['tokenizer'][0]))
+                    return
+                if self.translator.tgt_tokenizer is None:
+                    QMessageBox.critical(self, self.tr('错误'),
+                                        self.tr('当前版本的翻译姬中不含有{}，请更新至最新版本')
+                                        .format(self.translator.config['tokenizer'][1]))
                     return
                 if None in self.translator.input_cleaners or None in self.translator.output_cleaners:
                     QMessageBox.critical(self, self.tr('错误'),

@@ -132,16 +132,14 @@ class Translator:
 
         with open(f'{model_dir}/config.json', 'r', encoding='utf-8') as f:
             self.config = json.load(f)
-        with open(f'{model_dir}/vocabs_source.json', 'r', encoding='utf-8') as f:
-            self.vocabs_source = json.load(f)
-        with open(f'{model_dir}/vocabs_target.json', 'r', encoding='utf-8') as f:
-            self.vocabs_target = json.load(f)
-        self.model = init_model(len(self.vocabs_source)+259, len(self.vocabs_target)+259,
+
+        self.model = init_model(self.config['vocab_size'][0], self.config['vocab_size'][1],
                                 self.config['n_layers'], self.config['d_model'],
                                 self.config['d_ff'], self.config['n_heads']).to(device)
         self.model.load_state_dict(torch.load(f'{model_dir}/model.pth', map_location=device))
         self.model.eval()
-        self.tokenizer = getattr(tokenizer, self.config['tokenizer'], None)
+        self.src_tokenizer = getattr(tokenizer, self.config['tokenizer'][0], None)
+        self.tgt_tokenizer = getattr(tokenizer, self.config['tokenizer'][1], None)
         
         ic_names = self.config.get('input_cleaners', None)
         if ic_names is None:
@@ -150,9 +148,8 @@ class Translator:
         self.input_cleaners = [getattr(cleaner, c, None) for c in ic_names]
         self.output_cleaners = [getattr(cleaner, c, None) for c in oc_names]
 
-        if self.tokenizer is not None:
-            self.encode, _ = self.tokenizer(self.vocabs_source)
-            _, self.decode = self.tokenizer(self.vocabs_target)
+        self.encode, _ = self.src_tokenizer(f'{model_dir}/{self.config["vocab_path"][0]}')
+        _, self.decode = self.tgt_tokenizer(f'{model_dir}/{self.config["vocab_path"][1]}')
 
     def is_terminated(self):
         return self._is_terminated

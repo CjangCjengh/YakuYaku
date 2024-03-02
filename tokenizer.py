@@ -1,6 +1,9 @@
 
 
-def basic_tokenizer(vocabs):
+def basic_tokenizer(vocab_path):
+    import json
+    with open(vocab_path, 'r', encoding='utf-8') as f:
+        vocabs = json.load(f)
     vocab_to_id = {v:i+259 for i, v in enumerate(vocabs)}
     id_to_vocab = {v:k for k, v in vocab_to_id.items()}
     def encode(text):
@@ -32,4 +35,17 @@ def basic_tokenizer(vocabs):
             else:
                 i+=1
         return text
+    return encode, decode
+
+
+def bpe_tokenizer(model_path):
+    import sentencepiece as spm
+    sp = spm.SentencePieceProcessor()
+    sp.Load(model_path)
+    def encode(text):
+        text = text.replace('\n', '\\n')
+        return sp.EncodeAsIds(text)
+    def decode(ids):
+        text = sp.DecodeIds(ids)
+        return text.replace('\\n', '\n')
     return encode, decode
