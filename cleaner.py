@@ -12,3 +12,6 @@ def s2t(text):
 
 def t2s(text):
     return opencc.OpenCC('t2s').convert(text)
+
+def del_zws(text):
+    return text.replace('\u200b', '')
