@@ -9,6 +9,10 @@
 
 [轻小说翻译模型（测试版）（日本語 → 한국어）](https://drive.google.com/file/d/1-wvmBLPzqbUM9iECAoWkBUJtVIp27GFm/view?usp=sharing)
 
+## Other Practices
+
+[Qwen1.5-14B-Chat finetuned for（한국어 → 简体中文）](https://huggingface.co/CjangCjengh/LN-Korean-14B-v0.1)
+
 ## Sakura-13B-LNovel
 Run `server.py` in [SakuraLLM/Sakura-13B-Galgame](https://github.com/SakuraLLM/Sakura-13B-Galgame/tree/dev_server)
 ```sh
