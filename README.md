@@ -11,7 +11,7 @@
 
 ## Other Practices
 
-[Qwen1.5-14B-Chat finetuned for（한국어 → 简体中文）](https://huggingface.co/CjangCjengh/LN-Korean-14B-v0.1)
+[Sakura-14B-Qwen2beta-Base-v2 finetuned for（한국어 → 简体中文）](https://huggingface.co/CjangCjengh/LN-Korean-14B-v0.2)
 
 ## Sakura-13B-LNovel
 Run `server.py` in [SakuraLLM/Sakura-13B-Galgame](https://github.com/SakuraLLM/Sakura-13B-Galgame/tree/dev_server)
