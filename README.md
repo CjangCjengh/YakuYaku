@@ -13,7 +13,9 @@
 
 [LN-Korean-14B-v0.2](https://huggingface.co/CjangCjengh/LN-Korean-14B-v0.2) : Sakura-14B-Qwen2beta-Base-v2 finetuned for（한국어 → 简体中文）
 
-[LN-Thai-14B-v0.1](https://huggingface.co/CjangCjengh/LN-Thai-14B-v0.1) : Sakura-14B-Qwen2beta-Base-v2 finetuned for（한국어 → 简体中文）
+[LN-Thai-14B-v0.1](https://huggingface.co/CjangCjengh/LN-Thai-14B-v0.1) : Sakura-14B-Qwen2beta-Base-v2 finetuned for（ภาษาไทย → 简体中文）
+
+[LN-ko2ja-14B-v0.1](https://huggingface.co/CjangCjengh/LN-ko2ja-14B-v0.1) : Sakura-14B-Qwen2beta-Base-v2 finetuned for（한국어 → 日本語）
 
 ## Sakura-13B-LNovel
 Run `server.py` in [SakuraLLM/Sakura-13B-Galgame](https://github.com/SakuraLLM/Sakura-13B-Galgame/tree/dev_server)
