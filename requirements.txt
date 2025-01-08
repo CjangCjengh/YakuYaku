@@ -1,4 +1,5 @@
-torch
 pyqt6
 opencc
 requests
+openai
+tqdm

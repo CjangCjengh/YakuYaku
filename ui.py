@@ -117,6 +117,8 @@ class TranslateSettingsDialog(QDialog):
         self.device_combobox.addItem('CPU')
         if torch.cuda.is_available():
             self.device_combobox.addItem('CUDA')
+        if torch.xpu.is_available():
+            self.device_combobox.addItem('XPU')
         if torch.backends.mps.is_available():
             self.device_combobox.addItem('MPS')
         self.device_combobox.setCurrentIndex(0 if parent.device == 'cpu' else 1)
@@ -327,7 +329,7 @@ class UrlInputDialog(QDialog):
         layout = QVBoxLayout()
         label = QLabel(self.tr('请输入URL:'))
         self.url_input = QLineEdit()
-        self.url_input.setText('http://127.0.0.1:5000')
+        self.url_input.setText('http://127.0.0.1:8080')
         ok_button = QPushButton(self.tr('确定'))
 
         ok_button.clicked.connect(self.on_ok_button_clicked)
